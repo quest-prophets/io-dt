@@ -1,0 +1,5 @@
+---
+BasedOnStyle: Microsoft
+PointerAlignment: Left
+AlignAfterOpenBracket: AlwaysBreak
+UseTab: Always
