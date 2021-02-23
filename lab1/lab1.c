@@ -17,7 +17,7 @@ MODULE_LICENSE("GPL");
 MODULE_VERSION("0.1");
 
 const char* CH_DEV_NAME = "lab1_ch_dev";
-const char* PROC_FILE_NAME = "lab1_proc";
+const char* PROC_FILE_NAME = "var4";
 
 /* === result array === */
 
