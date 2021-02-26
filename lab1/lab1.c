@@ -82,7 +82,7 @@ ssize_t ch_dev_write(struct file* f, const char __user* buf, size_t count, loff_
 		if (copy_from_user(write_buf, buf + offset, len) != 0)
 			return -EFAULT;
 
-		for (i = 0; i < BUF_SIZE; ++i)
+		for (i = 0; i < len; ++i)
 			if (write_buf[i] == ' ')
 				num_spaces++;
 	}
