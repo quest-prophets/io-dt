@@ -29,7 +29,7 @@ int fd = open("/dev/lab1_ch_dev", O_RDWR);
 ```  
 После этого нужно сделать системный вызов `ioctl` и передать туда 0 вторым аргументом и название proc файла третьим.  
 ```C
-ioctl(fd, 0, filename)
+ioctl(fd, 0, filename);
 ```  
 Данные необходимо записывать в файл символьного устройства.  
 ```C
@@ -43,7 +43,7 @@ strcat(fd_proc_name, "/proc/");
 strcat(fd_proc_name, filename);
 
 int fd_proc = open(fd_proc_name, O_RDONLY);
-read(fd_proc, buf, len)
+read(fd_proc, buf, len);
 ```
 
 ## Примеры использования
