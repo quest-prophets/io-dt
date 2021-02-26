@@ -1,7 +1,9 @@
+#include <asm/uaccess.h>
 #include <linux/cdev.h>
 #include <linux/device.h>
 #include <linux/fs.h>
 #include <linux/init.h>
+#include <linux/ioctl.h>
 #include <linux/kdev_t.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -52,52 +54,7 @@ void darray_append(int item, struct darray* d)
 	d->darray_data[d->darray_count++] = item;
 }
 
-/* === char device === */
-
-#define BUF_SIZE ((size_t)256)
-
-struct darray ch_result_array;
-
-ssize_t ch_dev_read(struct file* f, char __user* buf, size_t count, loff_t* ppos)
-{
-	size_t i;
-	for (i = 0; i < ch_result_array.darray_count; ++i)
-	{
-		printk(KERN_DEBUG "%lu) %d\n", i + 1, ch_result_array.darray_data[i]);
-	}
-	return 0;
-}
-
-ssize_t ch_dev_write(struct file* f, const char __user* buf, size_t count, loff_t* ppos)
-{
-	int num_spaces = 0;
-
-	size_t offset;
-	for (offset = 0; offset < count; offset += BUF_SIZE)
-	{
-		char write_buf[BUF_SIZE];
-		size_t i, len;
-		len = min(BUF_SIZE, count - offset);
-
-		if (copy_from_user(write_buf, buf + offset, len) != 0)
-			return -EFAULT;
-
-		for (i = 0; i < len; ++i)
-			if (write_buf[i] == ' ')
-				num_spaces++;
-	}
-
-	darray_append(num_spaces, &ch_result_array);
-
-	*ppos += count;
-	return count;
-}
-
-struct file_operations ch_dev_ops = {
-	.owner = THIS_MODULE,
-	.read = ch_dev_read,
-	.write = ch_dev_write,
-};
+#define BUF_SIZE ((size_t)512)
 
 /* === proc device === */
 
@@ -109,10 +66,14 @@ struct proc_state
 
 ssize_t proc_read(struct file* f, char __user* buf, size_t count, loff_t* ppos)
 {
+	struct darray* res_array;
 	struct proc_state* state;
 	size_t out_len, snprintf_len;
 
 	state = (struct proc_state*)f->private_data;
+	res_array = PDE_DATA(file_inode(f));
+
+	printk(KERN_DEBUG "proc_read: state is %p, res_array is %p\n", state, res_array);
 
 	if (state->read_buf_i < state->read_buf_len)
 	{
@@ -124,11 +85,11 @@ ssize_t proc_read(struct file* f, char __user* buf, size_t count, loff_t* ppos)
 		return out_len;
 	}
 
-	if (state->read_i == ch_result_array.darray_count)
+	if (state->read_i == res_array->darray_count)
 		return 0;
 
 	snprintf_len =
-		snprintf(state->read_buf, BUF_SIZE, "%lu) %d\n", state->read_i + 1, ch_result_array.darray_data[state->read_i]);
+		snprintf(state->read_buf, BUF_SIZE, "%lu) %d\n", state->read_i + 1, res_array->darray_data[state->read_i]);
 	if (snprintf_len < 0 || snprintf_len >= BUF_SIZE)
 		return -EFAULT;
 
@@ -157,6 +118,8 @@ int proc_open(struct inode* i, struct file* f)
 	memset(state, 0, sizeof(struct proc_state));
 	f->private_data = state;
 
+	printk(KERN_DEBUG "lab1 proc_open: %s\n", f->f_path.dentry->d_name.name);
+
 	return 0;
 }
 
@@ -176,26 +139,139 @@ struct file_operations proc_file_ops = {
 	.release = proc_release,
 };
 
-struct proc_dir_entry* lab1_proc_entry;
+/* === char device === */
+
+struct ch_dev_state
+{
+	struct proc_dir_entry* proc_entry;
+	struct darray* res_array;
+};
+
+ssize_t ch_dev_read(struct file* f, char __user* buf, size_t count, loff_t* ppos)
+{
+	struct ch_dev_state* state;
+	size_t i;
+
+	state = (struct ch_dev_state*)f->private_data;
+	for (i = 0; i < state->res_array->darray_count; ++i)
+	{
+		printk(KERN_DEBUG "%lu) %d\n", i + 1, state->res_array->darray_data[i]);
+	}
+	return 0;
+}
+
+ssize_t ch_dev_write(struct file* f, const char __user* buf, size_t count, loff_t* ppos)
+{
+	struct ch_dev_state* state;
+	int num_spaces = 0;
+	size_t offset;
+
+	state = (struct ch_dev_state*)f->private_data;
+	for (offset = 0; offset < count; offset += BUF_SIZE)
+	{
+		char write_buf[BUF_SIZE];
+		size_t i, len;
+		len = min(BUF_SIZE, count - offset);
+
+		if (copy_from_user(write_buf, buf + offset, len) != 0)
+			return -EFAULT;
+
+		for (i = 0; i < len; ++i)
+			if (write_buf[i] == ' ')
+				num_spaces++;
+	}
+
+	darray_append(num_spaces, state->res_array);
+
+	*ppos += count;
+	return count;
+}
+
+int ch_dev_open(struct inode* i, struct file* f)
+{
+	struct ch_dev_state* state;
+	state = vmalloc(sizeof(struct ch_dev_state));
+	memset(state, 0, sizeof(struct ch_dev_state));
+
+	state->res_array = vmalloc(sizeof(struct darray));
+	*state->res_array = darray_new();
+
+	f->private_data = state;
+
+	printk(KERN_DEBUG "lab1 ch_dev_open: %s\n", f->f_path.dentry->d_name.name);
+
+	return 0;
+}
+
+int ch_dev_release(struct inode* i, struct file* f)
+{
+	struct ch_dev_state* state;
+	if (f->private_data != NULL)
+	{
+		state = (struct ch_dev_state*)f->private_data;
+		if (state->res_array != NULL)
+			vfree(state->res_array); // TODO darray_free
+		if (state->proc_entry != NULL)
+			proc_remove(state->proc_entry);
+		vfree(f->private_data);
+	}
+
+	return 0;
+}
+
+#define IOCTL_SET_FILENAME 0
+
+long ch_dev_ioctl(struct file* f, unsigned int cmd, unsigned long arg)
+{
+	struct ch_dev_state* state;
+	char file_name[BUF_SIZE];
+	char* user_file_name;
+	int file_name_len = 0;
+
+	state = (struct ch_dev_state*)f->private_data;
+
+	if (cmd != IOCTL_SET_FILENAME)
+		return -ENOTTY;
+
+	user_file_name = (char*)arg;
+
+	if (copy_from_user(file_name, user_file_name, 1) != 0)
+		return -EFAULT;
+	for (file_name_len = 1; file_name_len < BUF_SIZE && file_name[file_name_len] != '\0'; ++file_name_len)
+		if (copy_from_user(file_name + file_name_len, user_file_name + file_name_len, 1) != 0)
+			return -EFAULT;
+
+	file_name[file_name_len] = '\0';
+
+	printk(KERN_DEBUG "ch_dev_ioctl: file = %s\n", file_name);
+
+	state->proc_entry = proc_create_data(file_name, 0444, NULL, &proc_file_ops, state->res_array);
+	if (state->proc_entry == NULL)
+		return -EFAULT;
+
+	return 0;
+}
+
+/* === init === */
+
+struct file_operations ch_dev_ops = {
+	.owner = THIS_MODULE,
+	.open = ch_dev_open,
+	.release = ch_dev_release,
+	.read = ch_dev_read,
+	.write = ch_dev_write,
+	.unlocked_ioctl = ch_dev_ioctl};
+
 dev_t ch_dev_first;
 struct cdev ch_dev;
 struct class* ch_dev_cls;
 
 int __init lab1_init(void)
 {
-	ch_result_array = darray_new();
-
-	lab1_proc_entry = proc_create(PROC_FILE_NAME, 0444, NULL, &proc_file_ops);
-	if (lab1_proc_entry == NULL)
-	{
-		printk(KERN_ERR "Unable to create proc file\n");
-		return -1;
-	}
-
 	if (alloc_chrdev_region(&ch_dev_first, 0 /* first minor */, 1 /* num minor */, "ch_dev") != 0)
 	{
 		printk(KERN_ERR "Unable to create character device driver\n");
-		goto fail_proc_destroy;
+		return -1;
 	}
 	if ((ch_dev_cls = class_create(THIS_MODULE, "chardrv")) == NULL)
 		goto fail_region_destroy;
@@ -216,14 +292,11 @@ fail_cls_destroy:
 	class_destroy(ch_dev_cls);
 fail_region_destroy:
 	unregister_chrdev_region(ch_dev_first, 1);
-fail_proc_destroy:
-	proc_remove(lab1_proc_entry);
 	return -1;
 }
 
 void __exit lab1_exit(void)
 {
-	proc_remove(lab1_proc_entry);
 	cdev_del(&ch_dev);
 	device_destroy(ch_dev_cls, ch_dev_first);
 	class_destroy(ch_dev_cls);
