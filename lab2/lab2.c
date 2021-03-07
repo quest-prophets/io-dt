@@ -21,14 +21,57 @@ struct disk_state
 
 struct gendisk* _gd;
 
+static int handle_transfer(struct request* req)
+{
+	sector_t sector_offset;
+	struct disk_state* disk_state;
+	struct bio_vec bv;
+	struct req_iterator iter;
+
+	sector_offset = blk_rq_pos(req);
+	disk_state = req->rq_disk->private_data;
+
+	rq_for_each_segment(bv, req, iter)
+	{
+		void* req_segment_start;
+		void* ramdisk_segment_start;
+
+		if (bv.bv_len % SECTOR_SIZE != 0)
+		{
+			printk(
+				KERN_ERR "%s: IO request size (%u) is not a multiple of sector size\n", THIS_MODULE->name, bv.bv_len);
+			return -EIO;
+		}
+
+		req_segment_start = page_address(bv.bv_page) + bv.bv_offset;
+		ramdisk_segment_start = disk_state->ramdisk + sector_offset * SECTOR_SIZE;
+
+		if (rq_data_dir(req) == WRITE)
+			memcpy(ramdisk_segment_start, req_segment_start, bv.bv_len);
+		else
+			memcpy(req_segment_start, ramdisk_segment_start, bv.bv_len);
+
+		printk(
+			KERN_INFO "%s: %s %u bytes starting at segment %lu\n", THIS_MODULE->name,
+			rq_data_dir(req) == WRITE ? "written" : "read", bv.bv_len, sector_offset);
+
+		sector_offset += bv.bv_len / SECTOR_SIZE;
+	}
+
+	if (sector_offset - blk_rq_pos(req) != blk_rq_sectors(req))
+	{
+		printk(KERN_ERR "%s: Number of sectors in request does not match bio_vec contents\n", THIS_MODULE->name);
+		return -EIO;
+	}
+
+	return 0;
+}
+
 static void handle_queue_request(struct request_queue* q)
 {
 	struct request* req;
 	while ((req = blk_fetch_request(q)) != NULL)
-	{
-		printk(KERN_NOTICE "lab2: skipping request\n");
-		__blk_end_request_all(req, 0);
-	}
+		__blk_end_request_all(req, handle_transfer(req));
 }
 
 static struct block_device_operations disk_ops = {
@@ -85,10 +128,17 @@ alloc_state_failed:
 
 void __exit lab2_exit(void)
 {
-	del_gendisk(_gd);
-	vfree(_gd->private_data);
+	struct disk_state* disk_state;
+	disk_state = _gd->private_data;
+
 	blk_cleanup_queue(_gd->queue);
+
+	vfree(disk_state->ramdisk);
+	vfree(disk_state);
+
 	unregister_blkdev(_gd->major, "lbdv");
+
+	del_gendisk(_gd);
 	put_disk(_gd);
 
 	printk(KERN_INFO "%s: exit\n", THIS_MODULE->name);
