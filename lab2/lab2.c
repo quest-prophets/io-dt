@@ -7,6 +7,8 @@
 #include <linux/string.h>
 #include <linux/types.h>
 
+#include "mbr.h"
+
 MODULE_AUTHOR("P3402");
 MODULE_DESCRIPTION("IOS Lab2 driver");
 MODULE_LICENSE("GPL");
@@ -80,8 +82,6 @@ static struct block_device_operations disk_ops = {
 
 int __init lab2_init(void)
 {
-	const size_t disk_size_bytes = 50 * 1024 * 1024; // 50MiB
-
 	int dev_major;
 	struct disk_state* state;
 
@@ -98,9 +98,11 @@ int __init lab2_init(void)
 	if ((_gd->queue = blk_init_queue(handle_queue_request, &state->queue_lock)) == NULL)
 		goto init_queue_failed;
 
-	state->num_sectors = disk_size_bytes / SECTOR_SIZE;
-	if ((state->ramdisk = vmalloc(disk_size_bytes)) == NULL)
+	state->num_sectors = DISK_SIZE_BYTES / SECTOR_SIZE;
+	if ((state->ramdisk = vmalloc(DISK_SIZE_BYTES)) == NULL)
 		goto vmalloc_ramdisk_failed;
+
+	fill_partition_table(state->ramdisk);
 
 	_gd->major = dev_major;
 	_gd->first_minor = 0;
