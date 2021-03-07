@@ -1,0 +1,15 @@
+Vagrant.configure('2') do |config|
+  config.vm.box = 'generic/ubuntu1804'
+  config.vm.box_version = '= 3.2.8'
+
+  config.vm.provision 'shell', inline: <<-EOF
+    apt-get update
+    apt-get install -y build-essential
+  EOF
+
+  config.vm.synced_folder '.', '/vagrant'
+  config.trigger.after :up do |t|
+    t.info = "rsync auto"
+    t.run = {inline: "vagrant rsync-auto"}
+  end
+end
