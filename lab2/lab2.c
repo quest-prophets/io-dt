@@ -133,6 +133,8 @@ void __exit lab2_exit(void)
 	struct disk_state* disk_state;
 	disk_state = _gd->private_data;
 
+	print_partition_table(disk_state->ramdisk);
+
 	blk_cleanup_queue(_gd->queue);
 
 	vfree(disk_state->ramdisk);

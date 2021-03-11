@@ -1,4 +1,4 @@
-#define DISK_SIZE_BYTES (55 * 1024 * 1024) // 50MiB
+#define DISK_SIZE_BYTES (50 * 1024 * 1024) // 50MiB
 
 #define MIB_TO_SECTORS(mib) (mib * 1024 * 1024 / 512)
 
@@ -64,8 +64,70 @@ static PartTable part_table = {
 		end_cyl : 0x0,
 		abs_start_sec : MIB_TO_SECTORS(35) + 1,
 		sec_in_part : MIB_TO_SECTORS(15)
+	}};
+
+inline void print_partition_table(void* disk)
+{
+	int i;
+	int logical_offset, extpart_offset;
+
+	for (i = 0; i < 4; ++i)
+	{
+		PartEntry* e;
+		e = (PartEntry*)(disk + PARTITION_TABLE_OFFSET + 16 * i);
+		printk(
+			KERN_INFO "def_part_table[%d] = {\n"
+					  "boot_type : %d,\n"
+					  "start_head : %d,\n"
+					  "start_sec : %d,\n"
+					  "start_cyl_hi : %d,\n"
+					  "start_cyl : %d,\n"
+					  "part_type : %d,\n"
+					  "end_head : %d,\n"
+					  "end_sec : %d,\n"
+					  "end_cyl_hi : %d,\n"
+					  "end_cyl : %d,\n"
+					  "abs_start_sec : %d,\n"
+					  "sec_in_part : %d\n};\n",
+			i, e->boot_type, e->start_head, e->start_sec, e->start_cyl_hi, e->start_cyl, e->part_type, e->end_head,
+			e->end_sec, e->end_cyl_hi, e->end_cyl, e->abs_start_sec, e->sec_in_part);
 	}
-};
+
+	extpart_offset = ((int)((PartEntry*)(disk + PARTITION_TABLE_OFFSET + 16))->abs_start_sec) * 512;
+
+	logical_offset = extpart_offset + PARTITION_TABLE_OFFSET;
+	while (1)
+	{
+		PartEntry* e;
+
+		printk(
+			KERN_INFO "Extended Boot Record Offset = (%d * 512 + %d)\n",
+			(logical_offset - PARTITION_TABLE_OFFSET) / 512, PARTITION_TABLE_OFFSET);
+		for (i = 0; i < 2; ++i)
+		{
+			e = (PartEntry*)(disk + logical_offset + 16 * i);
+			printk(
+				KERN_INFO "def_log_part_table[%d] = {\n"
+						  "boot_type : %d,\n"
+						  "start_head : %d,\n"
+						  "start_sec : %d,\n"
+						  "start_cyl_hi : %d,\n"
+						  "start_cyl : %d,\n"
+						  "part_type : %d,\n"
+						  "end_head : %d,\n"
+						  "end_sec : %d,\n"
+						  "end_cyl_hi : %d,\n"
+						  "end_cyl : %d,\n"
+						  "abs_start_sec : %d,\n"
+						  "sec_in_part : %d\n};\n",
+				i, e->boot_type, e->start_head, e->start_sec, e->start_cyl_hi, e->start_cyl, e->part_type, e->end_head,
+				e->end_sec, e->end_cyl_hi, e->end_cyl, e->abs_start_sec, e->sec_in_part);
+		}
+		if (e->abs_start_sec == 0)
+			break;
+		logical_offset = extpart_offset + ((int)(e->abs_start_sec)) * 512 + PARTITION_TABLE_OFFSET;
+	}
+}
 
 inline void fill_partition_table(void* disk)
 {
