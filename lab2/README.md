@@ -40,9 +40,9 @@ for p in `seq 3`; do sudo mkfs -t vfat /dev/lbdv18p$p; done
 
 ## Примеры использования
 
-Установка драйвера и форматирование диска:  
+Установка драйвера и форматирование диска:
 ![image](https://user-images.githubusercontent.com/26933429/110926778-dda4c300-8335-11eb-81da-6e18b7b2d771.png)
-  
+
 
 Измерение скорости обмена данными:
 
@@ -56,6 +56,20 @@ for bs in 512 2048 4096 16384 65536; do
 done
 ```
 
+Просмотр MBR для диска, разделенного на primary и extended разделы:
+
+```sh
+export D = /dev/lbdv18
+sudo parted $D mklabel msdos;
+sudo parted $D mkpart primary 1s $(( 10*1024*1024/512 ))s;
+sudo parted $D mkpart extended $(( 10*1024*1024/512 + 1 ))s $(( 50*1024*1024/512 - 1 ))s;
+sudo parted $D mkpart logical $(( 10*1024*1024/512 + 2 ))s $(( 25*1024*1024/512 ))s;
+sudo parted $D mkpart logical $(( 25*1024*1024/512 + 2 ))s $(( 50*1024*1024/512 - 1 ))s;
+
+sudo rmmod lab2.ko
+dmesg | tail -n 120
+```
+
 ## Тестирование производительности
 
 | Размер блоков (байт) | Скорость при LBDV -> LBDV (Мб/с) | Скорость при VDA -> LBDV (Мб/с) |
@@ -65,6 +79,5 @@ done
 | 4096	| 313.9	| 413.8 |
 | 16384	| 519.9	| 775.1 |
 | 65536	| 687.8 |	1219.08 |
-         
-![image](https://user-images.githubusercontent.com/26933429/110925439-3e330080-8334-11eb-82ab-63fafcfe26c2.png)
 
+![image](https://user-images.githubusercontent.com/26933429/110925439-3e330080-8334-11eb-82ab-63fafcfe26c2.png)
