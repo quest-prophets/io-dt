@@ -28,43 +28,92 @@ typedef struct
 
 typedef PartEntry PartTable[4];
 
-static PartTable part_table = {
-	{
-		boot_type : 0x0,
-		start_sec : 0x0,
-		start_head : 0x0,
-		start_cyl : 0x0,
-		part_type : 0x83,
-		end_head : 0x0,
-		end_sec : 0x0,
-		end_cyl : 0x0,
-		abs_start_sec : 0x1,
-		sec_in_part : MIB_TO_SECTORS(10)
-	},
-	{
-		boot_type : 0x0,
-		start_head : 0x0,
-		start_sec : 0x0,
-		start_cyl : 0x0,
-		part_type : 0x83,
-		end_sec : 0x0,
-		end_head : 0x0,
-		end_cyl : 0x0,
-		abs_start_sec : MIB_TO_SECTORS(10) + 1,
-		sec_in_part : MIB_TO_SECTORS(25)
-	},
-	{
-		boot_type : 0x0,
-		start_head : 0x0,
-		start_sec : 0x0,
-		start_cyl : 0x0,
-		part_type : 0x83,
-		end_sec : 0x0,
-		end_head : 0x0,
-		end_cyl : 0x0,
-		abs_start_sec : MIB_TO_SECTORS(35) + 1,
-		sec_in_part : MIB_TO_SECTORS(15)
-	}};
+static PartTable part_table = {{
+	boot_type : 0,
+	start_head : 0,
+	start_sec : 0,
+	start_cyl_hi : 0,
+	start_cyl : 0,
+	part_type : 0x83,
+	end_head : 0,
+	end_sec : 0,
+	end_cyl_hi : 0,
+	end_cyl : 0,
+	abs_start_sec : 1,
+	sec_in_part : 20480
+} {
+	boot_type : 0,
+	start_head : 0,
+	start_sec : 0,
+	start_cyl_hi : 0,
+	start_cyl : 0,
+	part_type : 0xF,
+	end_head : 0,
+	end_sec : 0,
+	end_cyl_hi : 0,
+	end_cyl : 0,
+	abs_start_sec : 20481,
+	sec_in_part : 81919
+}};
+
+static unsigned int log_part_br_start_sector[] = {20481 * 512 + 446, 51201 * 512 + 446};
+static const PartTable log_part_table[] = {
+	{{
+		 boot_type : 0,
+		 start_head : 0,
+		 start_sec : 0,
+		 start_cyl_hi : 0,
+		 start_cyl : 0,
+		 part_type : 0x83,
+		 end_head : 0,
+		 end_sec : 0,
+		 end_cyl_hi : 0,
+		 end_cyl : 0,
+		 abs_start_sec : 1,
+		 sec_in_part : 30719
+	 },
+	 {
+		 boot_type : 0,
+		 start_head : 0,
+		 start_sec : 0,
+		 start_cyl_hi : 0,
+		 start_cyl : 0,
+		 part_type : 0x5,
+		 end_head : 0,
+		 end_sec : 0,
+		 end_cyl_hi : 0,
+		 end_cyl : 0,
+		 abs_start_sec : 30720,
+		 sec_in_part : 51199
+	 }},
+	{{
+		 boot_type : 0,
+		 start_head : 0,
+		 start_sec : 0,
+		 start_cyl_hi : 0,
+		 start_cyl : 0,
+		 part_type : 0x83,
+		 end_head : 0,
+		 end_sec : 0,
+		 end_cyl_hi : 0,
+		 end_cyl : 0,
+		 abs_start_sec : 1,
+		 sec_in_part : 51198
+	 },
+	 {
+		 boot_type : 0,
+		 start_head : 0,
+		 start_sec : 0,
+		 start_cyl_hi : 0,
+		 start_cyl : 0,
+		 part_type : 0,
+		 end_head : 0,
+		 end_sec : 0,
+		 end_cyl_hi : 0,
+		 end_cyl : 0,
+		 abs_start_sec : 0,
+		 sec_in_part : 0
+	 }}};
 
 inline void print_partition_table(void* disk)
 {
