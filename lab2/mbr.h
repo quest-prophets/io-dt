@@ -28,35 +28,37 @@ typedef struct
 
 typedef PartEntry PartTable[4];
 
-static PartTable part_table = {{
-	boot_type : 0,
-	start_head : 0,
-	start_sec : 0,
-	start_cyl_hi : 0,
-	start_cyl : 0,
-	part_type : 0x83,
-	end_head : 0,
-	end_sec : 0,
-	end_cyl_hi : 0,
-	end_cyl : 0,
-	abs_start_sec : 1,
-	sec_in_part : 20480
-} {
-	boot_type : 0,
-	start_head : 0,
-	start_sec : 0,
-	start_cyl_hi : 0,
-	start_cyl : 0,
-	part_type : 0xF,
-	end_head : 0,
-	end_sec : 0,
-	end_cyl_hi : 0,
-	end_cyl : 0,
-	abs_start_sec : 20481,
-	sec_in_part : 81919
-}};
+static PartTable part_table = {
+	{
+		boot_type : 0,
+		start_head : 0,
+		start_sec : 0,
+		start_cyl_hi : 0,
+		start_cyl : 0,
+		part_type : 0x83,
+		end_head : 0,
+		end_sec : 0,
+		end_cyl_hi : 0,
+		end_cyl : 0,
+		abs_start_sec : 1,
+		sec_in_part : 20480
+	},
+	{
+		boot_type : 0,
+		start_head : 0,
+		start_sec : 0,
+		start_cyl_hi : 0,
+		start_cyl : 0,
+		part_type : 0xF,
+		end_head : 0,
+		end_sec : 0,
+		end_cyl_hi : 0,
+		end_cyl : 0,
+		abs_start_sec : 20481,
+		sec_in_part : 81919
+	}};
 
-static unsigned int log_part_br_start_sector[] = {20481 * 512 + 446, 51201 * 512 + 446};
+static unsigned int log_part_br_start_sector[] = {20481, 51201};
 static const PartTable log_part_table[] = {
 	{{
 		 boot_type : 0,
@@ -180,7 +182,17 @@ inline void print_partition_table(void* disk)
 
 inline void fill_partition_table(void* disk)
 {
-	memset(disk, 0x0, DISK_SIZE_BYTES);
+	int ebr_i;
+
+	memset(disk, 0, DISK_SIZE_BYTES);
+
 	memcpy(disk + PARTITION_TABLE_OFFSET, &part_table, PARTITION_TABLE_SIZE);
 	*(unsigned short*)(disk + MBR_SIGNATURE_OFFSET) = MBR_SIGNATURE;
+
+	for (ebr_i = 0; ebr_i < ARRAY_SIZE(log_part_table); ++ebr_i)
+	{
+		void* ebr_start = disk + log_part_br_start_sector[ebr_i] * SECTOR_SIZE;
+		memcpy(ebr_start + PARTITION_TABLE_OFFSET, &log_part_table[ebr_i], PARTITION_TABLE_SIZE);
+		*(unsigned short*)(ebr_start + MBR_SIGNATURE_OFFSET) = MBR_SIGNATURE;
+	}
 }
