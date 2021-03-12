@@ -40,6 +40,10 @@ for p in `seq 3`; do sudo mkfs -t vfat /dev/lbdv18p$p; done
 
 ## Примеры использования
 
+Установка драйвера и форматирование диска:  
+![image](https://user-images.githubusercontent.com/26933429/110925899-ce714580-8334-11eb-97bc-0f97d79404cb.png)
+  
+
 Измерение скорости обмена данными:
 
 ```sh
