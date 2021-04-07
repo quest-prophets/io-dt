@@ -40,6 +40,13 @@ sudo insmod lab3.ko target_if="lo" target_proc_name="lab4_stat" target_str="test
 * `target_proc_name`: имя файла со статистикой, который будет доступен в `/proc` (в примере выше драйвером создается `/proc/lab4_stat`);
 * `target_str`: строка, на соответствие которой проверяется содержимое UDP пакетов.
 
+
+Если в `target_str` присутствуют пробелы, нужно задавать ее в формате `'"string"'`.
+
+```sh
+sudo insmod lab3.ko target_if="lo" target_proc_name="lab4_stat" target_str='"Hello world"'
+```
+
 ## Примеры использования
 
 Передача пакета и проверка статистики:
