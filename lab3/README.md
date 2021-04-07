@@ -56,6 +56,4 @@ $ echo -n "test" >/dev/udp/127.0.0.1/8000
 $ cat /proc/lab4_stat
 Packets received: 1
 Bytes received: 32
-Packets transmitted: 0
-Bytes transmitted: 0
 ```
