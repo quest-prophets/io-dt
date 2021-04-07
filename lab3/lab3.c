@@ -142,9 +142,8 @@ ssize_t proc_read(struct file* f, char __user* buf, size_t count, loff_t* ppos)
 	state = netdev_priv(child_dev);
 
 	out_len = snprintf(
-		tmp, buf_size, "Packets received: %ld\nBytes received: %ld\nPackets transmitted: %ld\nBytes transmitted: %ld\n",
-		state->packet_stats.rx_packets, state->packet_stats.rx_bytes, state->packet_stats.tx_packets,
-		state->packet_stats.tx_bytes);
+		tmp, buf_size, "Packets received: %ld\nBytes received: %ld\n",
+		state->packet_stats.rx_packets, state->packet_stats.rx_bytes);
 	if (out_len < 0 || out_len >= buf_size)
 		return -EFAULT;
 
